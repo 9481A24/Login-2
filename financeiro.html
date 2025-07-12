@@ -1,1 +1,232 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Controle Financeiro - Lançamentos</title>
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    padding: 20px;
+    color: #333;
+  }
+  .container {
+    max-width: 720px;
+    margin: auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+  }
+  h2, h3 {
+    text-align: center;
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+  }
+  input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+  }
+  button {
+    width: 100%;
+    margin-top: 25px;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    background-color: #28a745;
+    color: white;
+    cursor: pointer;
+    transition: background-color .3s;
+  }
+  button:hover {
+    background-color: #218838;
+  }
+  textarea {
+    width: 100%;
+    height: 180px;
+    margin-top: 10px;
+    padding: 10px;
+    font-family: monospace;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    resize: none;
+    white-space: pre-line;
+  }
+  .entrada-bloco {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .entrada-bloco > div {
+    flex: 1 1 48%;
+    min-width: 300px;
+  }
+  #divisao ul {
+    list-style: none;
+    padding: 0;
+  }
+  #divisao li {
+    font-weight: bold;
+    margin: 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .olho-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: #007bff;
+    padding: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>📒 Controle Financeiro - Lançamentos</h2>
+
+  <div class="entrada-bloco">
+    <div>
+      <label>📝 Origem:</label>
+      <input type="text" id="origem" placeholder="Ex: Cliente X" />
+      <label>📅 Data:</label>
+      <input type="date" id="data" />
+      <label>💵 Valor (R$):</label>
+      <input type="number" id="valor" step="0.01" placeholder="0.00" />
+    </div>
+  </div>
+
+  <button onclick="registrarEntrada()">Registrar Entrada</button>
+
+  <div>
+    <h3>💰 Total Atual: <span id="total">R$ 0.00</span></h3>
+    <div id="divisao"></div>
+  </div>
+
+  <div>
+    <h3>📜 Histórico</h3>
+    <textarea id="historico" readonly></textarea>
+  </div>
+</div>
+
+<script>
+  let total = 0;
+  let historico = '';
+  let investimentoVisivel = false;
+
+  function formatDataHora(d) {
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+  }
+
+  function salvarDados() {
+    localStorage.setItem('total', total.toFixed(2));
+    localStorage.setItem('historico', historico);
+  }
+
+  function carregarDados() {
+    const totalSalvo = localStorage.getItem('total');
+    const historicoSalvo = localStorage.getItem('historico');
+
+    if (totalSalvo) {
+      total = parseFloat(totalSalvo);
+      document.getElementById("total").textContent = `R$ ${total.toFixed(2)}`;
+    }
+    if (historicoSalvo) {
+      historico = historicoSalvo;
+      document.getElementById("historico").value = historico;
+    }
+
+    atualizarDivisao();
+  }
+
+  function toggleInvestimento() {
+    investimentoVisivel = !investimentoVisivel;
+    atualizarDivisao();
+  }
+
+  function atualizarDivisao() {
+    const dizimo = total * 0.10;
+    const contas = total * 0.30;
+    const alimentacao = total * 0.30;
+    const investimento = total * 0.30;
+
+    const investimentoTexto = investimentoVisivel ? 
+      `R$ ${investimento.toFixed(2)}` : 
+      '••••••';
+
+    const divisaoHTML = `
+      <ul>
+        <li>🛐 Dízimo (10%): R$ ${dizimo.toFixed(2)}</li>
+        <li>💡 Contas (30%): R$ ${contas.toFixed(2)}</li>
+        <li>🍽️ Alimentação (30%): R$ ${alimentacao.toFixed(2)}</li>
+        <li>
+          📈 Investimento (30%): 
+          <button class="olho-btn" title="${investimentoVisivel ? 'Ocultar valor' : 'Mostrar valor'}" onclick="toggleInvestimento()">
+            ${investimentoVisivel ? '👁️' : '🙈'}
+          </button> 
+          <span>${investimentoTexto}</span>
+        </li>
+      </ul>
+    `;
+
+    document.getElementById("divisao").innerHTML = divisaoHTML;
+  }
+
+  function registrarEntrada() {
+    const origem = document.getElementById("origem").value.trim();
+    const dataStr = document.getElementById("data").value;
+    const valor = parseFloat(document.getElementById("valor").value);
+
+    if (!origem) {
+      alert("Informe a origem da entrada.");
+      return;
+    }
+    if (!dataStr) {
+      alert("Informe a data da entrada.");
+      return;
+    }
+    if (isNaN(valor) || valor <= 0) {
+      alert("Informe um valor válido maior que zero.");
+      return;
+    }
+
+    const dataEntrada = new Date(dataStr);
+    const hoje = new Date();
+
+    if (dataEntrada > hoje) {
+      alert("A data da entrada não pode ser futura.");
+      return;
+    }
+
+    total += valor;
+    const registro = `📅 ${formatDataHora(new Date())}\nOrigem: ${origem}\nData: ${dataStr}\nValor: R$ ${valor.toFixed(2)}\n------------------------------\n`;
+    historico += registro;
+
+    document.getElementById("total").textContent = `R$ ${total.toFixed(2)}`;
+    document.getElementById("historico").value = historico;
+
+    atualizarDivisao();
+
+    salvarDados();
+
+    // Limpar inputs
+    document.getElementById("origem").value = '';
+    document.getElementById("data").value = '';
+    document.getElementById("valor").value = '';
+  }
+
+  window.onload = carregarDados;
+</script>
+
+</body>
+</html>
